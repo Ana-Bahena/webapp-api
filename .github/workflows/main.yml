@@ -83,4 +83,30 @@ jobs:
           echo " - ${{ secrets.DOCKERHUB_USERNAME }}/webapp:latest"
           echo " - ${{ secrets.DOCKERHUB_USERNAME }}/webapp:${{ github.sha }}"
 
-          
+        deploy:
+          name: Deploy to AWS EC2
+          runs-on: ubuntu-latest
+          needs: build-and-push
+          if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+          steps:
+            - name: Deploy on EC2 via SSH
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                host: ${{ secrets.EC2_HOST }}
+                username: ${{ secrets.EC2_USER }}
+                key: ${{ secrets.EC2_SSH_KEY }}
+                script: |
+                  echo "=== Desplegando nueva versión ==="
+                  sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/webapp:latest
+                  sudo docker stop webapp-container || true
+                  sudo docker rm webapp-container || true
+                  sudo docker run -d \
+                    --name webapp-container \
+                    --restart unless-stopped \
+                    -p 80:80 \
+                    -p 6061:6061 \
+                    ${{ secrets.DOCKERHUB_USERNAME }}/webapp:latest
+                  sudo docker ps
+                  echo "=== Despliegue completado ==="
+
