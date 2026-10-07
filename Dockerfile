@@ -1,0 +1,25 @@
+# Imagen base oficial de Node.js
+FROM node:20-alpine
+
+# Crear directorio de trabajo dentro del contenedor
+WORKDIR /app
+
+# Copiar package.json y package-lock.json
+COPY package*.json ./
+
+# Instalar solo dependencias de producción
+RUN npm install --omit=dev
+
+# Copiar el resto del código
+COPY . .
+
+# Exponer el puerto 80 (el que usa tu servidor)
+EXPOSE 80
+EXPOSE 6061
+
+# Usuario no root (buena práctica de seguridad)
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+# Comando para iniciar la aplicación
+CMD ["node", "server.js"]

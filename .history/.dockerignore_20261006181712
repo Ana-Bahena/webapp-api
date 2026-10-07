@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+
+.env
+.env.*
+coverage
+*.md
+tests
+test
+Dockerfile
+.dockerignore
+db/*.db
+db/backup-*.db
+.DS_Store

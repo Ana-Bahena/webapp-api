@@ -1,0 +1,111 @@
+const express = require('express');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+const { initDatabase, getDb, saveDatabase } = require('./database');
+
+const app = express();
+const PORT = 80;
+
+app.use(cors());
+app.use(express.json());
+
+const response = (statusCode, data) => ({ statusCode, data });
+
+async function startServer() {
+  await initDatabase();
+  const db = getDb();
+
+  // 1. GET - Listar productos
+  app.get('/productos', (req, res) => {
+    const result = db.exec(`
+      SELECT p.id, p.nombre, p.precio, p.categoria_id, c.nombre as categoria
+      FROM productos p
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+    `);
+    const data = result.length ? result[0].values.map(row => ({
+      id: row[0], nombre: row[1], precio: row[2], categoria_id: row[3], categoria: row[4]
+    })) : [];
+    res.json(response(200, data));
+  });
+
+  // 2. GET - Producto por ID
+  app.get('/productos/:id', (req, res) => {
+    const stmt = db.prepare("SELECT * FROM productos WHERE id = ?");
+    stmt.bind([req.params.id]);
+    if (stmt.step()) {
+      const row = stmt.getAsObject();
+      stmt.free();
+      res.json(response(200, row));
+    } else {
+      stmt.free();
+      res.status(404).json(response(404, { mensaje: 'Producto no encontrado' }));
+    }
+  });
+
+  // 3. POST - Crear producto
+  app.post('/productos', (req, res) => {
+    const { nombre, precio, categoria_id } = req.body;
+    db.run("INSERT INTO productos (nombre, precio, categoria_id) VALUES (?, ?, ?)", [nombre, precio, categoria_id]);
+    saveDatabase();
+    const id = db.exec("SELECT last_insert_rowid()")[0].values[0][0];
+    res.status(201).json(response(201, { id, nombre, precio, categoria_id }));
+  });
+
+  // 4. DELETE - Eliminar producto
+  app.delete('/productos/:id', (req, res) => {
+    db.run("DELETE FROM productos WHERE id = ?", [req.params.id]);
+    saveDatabase();
+    res.json(response(200, { mensaje: 'Producto eliminado' }));
+  });
+
+  // 5. GET - Listar categorías
+  app.get('/categorias', (req, res) => {
+    const result = db.exec("SELECT * FROM categorias");
+    const data = result.length ? result[0].values.map(row => ({ id: row[0], nombre: row[1] })) : [];
+    res.json(response(200, data));
+  });
+
+  // 6. POST - Crear categoría
+  app.post('/categorias', (req, res) => {
+    const { nombre } = req.body;
+    db.run("INSERT INTO categorias (nombre) VALUES (?)", [nombre]);
+    saveDatabase();
+    const id = db.exec("SELECT last_insert_rowid()")[0].values[0][0];
+    res.status(201).json(response(201, { id, nombre }));
+  });
+
+  // 7. DELETE - Eliminar categoría
+  app.delete('/categorias/:id', (req, res) => {
+    db.run("DELETE FROM categorias WHERE id = ?", [req.params.id]);
+    saveDatabase();
+    res.json(response(200, { mensaje: 'Categoría eliminada' }));
+  });
+
+  // 8. GET - Contar productos
+  app.get('/productos/count/total', (req, res) => {
+    const total = db.exec("SELECT COUNT(*) as total FROM productos")[0].values[0][0];
+    res.json(response(200, { total }));
+  });
+
+  // 9. POST - Backup
+  app.post('/backup', (req, res) => {
+    const backupPath = path.join(__dirname, 'db', `backup-${Date.now()}.db`);
+    fs.copyFileSync(path.join(__dirname, 'db', 'database.db'), backupPath);
+    res.json(response(200, { mensaje: 'Backup creado', archivo: path.basename(backupPath) }));
+  });
+
+  // 10. DELETE - Vaciar BD
+  app.delete('/vaciar', (req, res) => {
+    db.run("DELETE FROM productos");
+    db.run("DELETE FROM categorias");
+    saveDatabase();
+    res.json(response(200, { mensaje: 'Base de datos vaciada' }));
+  });
+
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  });
+}
+
+startServer();
