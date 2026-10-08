@@ -119,8 +119,10 @@ async function startServer() {
   });
 
   // ==================== SERVIDOR TCP (Socket) ====================
+
   /* istanbul ignore next */
   const tcpServer = net.createServer((socket) => {
+  //const tcpServer = net.createServer((socket) => {
     console.log('Cliente TCP conectado');
 
     socket.on('data', (data) => {
@@ -128,19 +130,20 @@ async function startServer() {
       console.log('Mensaje recibido:', message);
 
       try {
+        // {insert: {...}}
         if (message.startsWith('{insert:')) {
-          const jsonStr = message.slice(8, -1);
+          const jsonStr = message.slice(8, -1); // quita {insert: y el }
           const element = JSON.parse(jsonStr);
 
           if (element.nombre && element.precio !== undefined) {
-            db.run(
-              "INSERT INTO productos (nombre, precio, categoria_id) VALUES (?, ?, ?)",
-              [element.nombre, element.precio, element.categoria_id || null]
-            );
+            // Insertar producto
+            db.run("INSERT INTO productos (nombre, precio, categoria_id) VALUES (?, ?, ?)", 
+              [element.nombre, element.precio, element.categoria_id || null]);
             saveDatabase();
             const id = db.exec("SELECT last_insert_rowid()")[0].values[0][0];
             socket.write(JSON.stringify(response(201, { id, ...element })) + '\n');
           } else if (element.nombre) {
+            // Insertar categoría
             db.run("INSERT INTO categorias (nombre) VALUES (?)", [element.nombre]);
             saveDatabase();
             const id = db.exec("SELECT last_insert_rowid()")[0].values[0][0];
@@ -148,8 +151,10 @@ async function startServer() {
           } else {
             socket.write(JSON.stringify(response(400, { mensaje: 'Datos inválidos' })) + '\n');
           }
-        } else if (message.startsWith('{get:')) {
-          const resource = message.slice(5, -1);
+        }
+        // {get:productos} o {get:categorias}
+        else if (message.startsWith('{get:')) {
+          const resource = message.slice(5, -1); // quita {get: y el }
 
           if (resource === 'productos') {
             const result = db.exec(`
@@ -157,21 +162,13 @@ async function startServer() {
               FROM productos p
               LEFT JOIN categorias c ON p.categoria_id = c.id
             `);
-            const data = result.length
-              ? result[0].values.map(row => ({
-                  id: row[0],
-                  nombre: row[1],
-                  precio: row[2],
-                  categoria_id: row[3],
-                  categoria: row[4]
-                }))
-              : [];
+            const data = result.length ? result[0].values.map(row => ({
+              id: row[0], nombre: row[1], precio: row[2], categoria_id: row[3], categoria: row[4]
+            })) : [];
             socket.write(JSON.stringify(response(200, data)) + '\n');
           } else if (resource === 'categorias') {
             const result = db.exec("SELECT * FROM categorias");
-            const data = result.length
-              ? result[0].values.map(row => ({ id: row[0], nombre: row[1] }))
-              : [];
+            const data = result.length ? result[0].values.map(row => ({ id: row[0], nombre: row[1] })) : [];
             socket.write(JSON.stringify(response(200, data)) + '\n');
           } else {
             socket.write(JSON.stringify(response(400, { mensaje: 'Recurso no válido' })) + '\n');
@@ -181,9 +178,7 @@ async function startServer() {
         }
       } catch (err) {
         console.error(err);
-        socket.write(
-          JSON.stringify(response(500, { mensaje: 'Error interno', error: err.message })) + '\n'
-        );
+        socket.write(JSON.stringify(response(500, { mensaje: 'Error interno', error: err.message })) + '\n');
       }
     });
 
@@ -192,7 +187,46 @@ async function startServer() {
     });
   });
 
+  /*
   // ==================== INICIAR SERVIDORES ====================
+
+  app.listen(PORT, () => {
+    console.log(`API HTTP corriendo en http://localhost:${PORT}`);
+  });
+
+  tcpServer.listen(TCP_PORT, () => {
+    console.log(`Servidor TCP (Socket) corriendo en puerto ${TCP_PORT}`);
+  });
+}
+
+startServer();
+*/
+
+
+  // ==================== INICIAR SERVIDORES ====================
+
+  // Solo abrir puertos si NO estamos en modo test
+  /* istanbul ignore next */
+  /* PROBAR
+  if (process.env.NODE_ENV !== 'test') {
+    
+    /*app.listen(PORT, () => {
+      console.log(`API HTTP corriendo en http://localhost:${PORT}`);
+    });*/
+    tcpServer.listen(TCP_PORT, () => {
+      console.log(`Servidor TCP (Socket) corriendo en puerto ${TCP_PORT}`);
+    });
+
+    tcpServer.listen(TCP_PORT, () => {
+      console.log(`Servidor TCP (Socket) corriendo en puerto ${TCP_PORT}`);
+    });
+  }
+} // ← fin de la función startServer()
+
+// Exportar para las pruebas
+//module.exports = { app, startServer };
+
+  // Dentro de startServer(), SOLO una vez:
   if (process.env.NODE_ENV !== 'test') {
     app.listen(PORT, () => {
       console.log(`API HTTP corriendo en http://localhost:${PORT}`);
@@ -202,10 +236,11 @@ async function startServer() {
       console.log(`Servidor TCP (Socket) corriendo en puerto ${TCP_PORT}`);
     });
   }
-} // fin de startServer
+// fin de startServer
 
 module.exports = { app, startServer };
 
+// SOLO una llamada aquí:
 if (process.env.NODE_ENV !== 'test') {
   startServer();
 }

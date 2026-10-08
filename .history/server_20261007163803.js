@@ -119,6 +119,7 @@ async function startServer() {
   });
 
   // ==================== SERVIDOR TCP (Socket) ====================
+  // ==================== SERVIDOR TCP (Socket) ====================
   /* istanbul ignore next */
   const tcpServer = net.createServer((socket) => {
     console.log('Cliente TCP conectado');
@@ -209,4 +210,3 @@ module.exports = { app, startServer };
 if (process.env.NODE_ENV !== 'test') {
   startServer();
 }
-

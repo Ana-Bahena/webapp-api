@@ -13,16 +13,13 @@ RUN npm install --omit=dev
 # Copiar el resto del código
 COPY . .
 
-# Crear carpeta db con permisos de escritura
-RUN mkdir -p /app/db && chmod 777 /app/db
-
 # Exponer el puerto 80 (el que usa tu servidor)
 EXPOSE 80
 EXPOSE 6061
 
 # Usuario no root (buena práctica de seguridad)
 #RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-#USER appuser
+USER appuser
 
 # Comando para iniciar la aplicación
 CMD ["node", "server.js"]

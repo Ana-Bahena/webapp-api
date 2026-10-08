@@ -119,6 +119,7 @@ async function startServer() {
   });
 
   // ==================== SERVIDOR TCP (Socket) ====================
+  // ==================== SERVIDOR TCP (Socket) ====================
   /* istanbul ignore next */
   const tcpServer = net.createServer((socket) => {
     console.log('Cliente TCP conectado');
