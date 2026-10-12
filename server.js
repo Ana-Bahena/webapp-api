@@ -207,6 +207,16 @@ async function startServer() {
 module.exports = { app, startServer };
 
 if (process.env.NODE_ENV !== 'test') {
-  startServer();
+  startServer(
+    app.get('/api/health', (req, res) => {
+      res.json({
+        statusCode: 200,
+        data: {
+          status: 'ok',
+          timestamp: new Date().toISOString()
+        }
+      });
+    })
+  );
 }
 
