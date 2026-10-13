@@ -29,7 +29,7 @@ async function startServer() {
     const data = result.length ? result[0].values.map(row => ({
       id: row[0], nombre: row[1], precio: row[2], categoria_id: row[3], categoria: row[4]
     })) : [];
-    res.json(response(200, data));
+    res.json(response(201, data));
   });
 
   app.get('/productos/:id', (req, res) => {
